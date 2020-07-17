@@ -1,6 +1,6 @@
 package br.com.f5promotora.bot.sofia.domain.service.v1;
 
-import org.springframework.data.domain.Example;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
 import br.com.f5promotora.bot.sofia.data.v1.dto.ContactDTO;
 import br.com.f5promotora.bot.sofia.data.v1.filter.ContactFilter;
@@ -8,7 +8,7 @@ import br.com.f5promotora.bot.sofia.data.v1.form.ContactForm;
 import br.com.f5promotora.bot.sofia.data.v1.mapper.ContactMapper;
 import br.com.f5promotora.bot.sofia.domain.service.ContactService;
 import br.com.f5promotora.bot.sofia.repository.ContactRepo;
-import br.com.f5promotora.bot.sofia.repository.filter.v1.ContactExample;
+import br.com.f5promotora.bot.sofia.repository.filter.v1.ContactDsl;
 import lombok.AllArgsConstructor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -22,14 +22,19 @@ public class ContactServiceImpl implements ContactService {
 
   @Override
   public Flux<ContactDTO> filter(ContactFilter filter) {
-    return ContactExample.getMatcher(filter).flatMapMany(matcher -> {
-      return repo.findAll(Example.of(mapper.filterToEntity(filter), matcher));
-    }).map(mapper::entitytoDto);
+
+    return ContactDsl.execute(filter).map(Optional::of).defaultIfEmpty(Optional.empty())
+        .flatMapMany(op -> {
+          if (op.isPresent()) {
+            return repo.findAll(op.get());
+          } else {
+            return repo.findAll();
+          }
+        }).map(mapper::entitytoDto);
   }
 
   @Override
   public Mono<ContactDTO> save(ContactForm form) {
-    System.out.println("odkdok");
     return repo.save(mapper.formToEntity(form)).map(mapper::entitytoDto);
   }
 
